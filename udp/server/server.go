@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"net"
 	"sync"
 )
@@ -82,29 +81,19 @@ func (l *UDPListener) processData(data []byte, n int, sourceAddr *net.IPAddr, er
 	}
 
 	data = data[:n]
-
-	fmt.Println(string(data))
-
+	
 	if len(data) < 8 {
 		return nil, false
 	}
 
 	sourcePort := binary.BigEndian.Uint16(data[0:2])
 	destPort := binary.BigEndian.Uint16(data[2:4])
-	length := binary.BigEndian.Uint16(data[4:6])
 	checksum := binary.BigEndian.Uint16(data[6:8])
 
-	calcSum := calculateSendChecksum(data, sourceAddr.IP.To4(), l.listenIP.IP.To4())
+	calculatedSum := calculateReceiveChecksum(data, sourceAddr.IP.To4(), l.listenIP.IP.To4())
+	calculatedPseudoSum := calculatePseudoheaderSum(data, sourceAddr.IP.To4(), l.listenIP.IP.To4())
 
-	fmt.Println("source:", sourceAddr.String(), ", dest:", l.listenIP.String())
-
-	fmt.Println("sourcePort:", sourcePort, ", destPort:", destPort, ", length:", length)
-	fmt.Printf("checksum: %x\n", checksum)
-	fmt.Printf("calcsum: %x\n", calcSum)
-
-	fmt.Printf("sum: %x\n", checksum&calcSum)
-
-	if calcSum != checksum {
+	if calculatedSum+checksum != 0xffff && calculatedPseudoSum != checksum {
 		return nil, false
 	}
 

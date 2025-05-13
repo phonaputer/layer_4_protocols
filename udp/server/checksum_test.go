@@ -28,3 +28,15 @@ func TestCalculateSendChecksum_InputPacketWithNoPadding_GetCorrectCheckSum(t *te
 		t.Fatalf("expected %x, got %x", 0x14de, result)
 	}
 }
+
+func TestCalculatePseudoHeaderSum_InputPacket_GetCorrectCheckSum(t *testing.T) {
+	sourceIP := net.IP{127, 0, 0, 1}
+	destIP := net.IP{127, 0, 0, 1}
+	data := []byte{0xe6, 0x55, 0x1f, 0x90, 0x00, 0x0c, 0xfe, 0x1f, 0x74, 0x65, 0x73, 0x74}
+
+	result := calculatePseudoheaderSum(data, sourceIP, destIP)
+
+	if result != 0xfe1f {
+		t.Fatalf("expected %x, got %x", 0xfe1f, result)
+	}
+}
