@@ -81,7 +81,7 @@ func (l *UDPListener) processData(data []byte, n int, sourceAddr *net.IPAddr, er
 	}
 
 	data = data[:n]
-	
+
 	if len(data) < 8 {
 		return nil, false
 	}
@@ -124,6 +124,19 @@ func (l *UDPListener) ReadFrom(b []byte) (int, *Address, error) {
 	}
 
 	return copy(b, msg.Data), msg.Address, nil
+}
+
+func (l *UDPListener) WriteTo(b []byte, address *Address) (int, error) {
+	packet := addHeader(&headerParams{
+		Data: b,
+		Source: &Address{
+			IP:   l.listenIP,
+			Port: l.listenPort,
+		},
+		Dest: address,
+	})
+
+	return l.ipListener.WriteToIP(packet, address.IP)
 }
 
 func ListenUDP(network string, address *Address) (*UDPListener, error) {
