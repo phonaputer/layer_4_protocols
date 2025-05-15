@@ -1,4 +1,4 @@
-package server
+package udp
 
 import (
 	"encoding/binary"
@@ -16,7 +16,7 @@ type Address struct {
 	Port int
 }
 
-type UDPListener struct {
+type Conn struct {
 	sync.Mutex
 
 	ipListener *net.IPConn
@@ -29,8 +29,8 @@ type UDPListener struct {
 	closeChan chan struct{}
 }
 
-func newUDPListener(ipListener *net.IPConn, address *Address) *UDPListener {
-	result := &UDPListener{
+func newConn(ipListener *net.IPConn, address *Address) *Conn {
+	result := &Conn{
 		ipListener: ipListener,
 		listenPort: address.Port,
 		listenIP:   address.IP,
@@ -44,7 +44,7 @@ func newUDPListener(ipListener *net.IPConn, address *Address) *UDPListener {
 	return result
 }
 
-func (l *UDPListener) Close() error {
+func (l *Conn) Close() error {
 	l.Lock()
 	defer l.Unlock()
 
@@ -59,7 +59,7 @@ type message struct {
 	Err     error
 }
 
-func (l *UDPListener) readLoop() {
+func (l *Conn) readLoop() {
 	for {
 		buffer := make([]byte, maxUDPPacketSize)
 		n, addr, err := l.ipListener.ReadFromIP(buffer)
@@ -75,7 +75,7 @@ func (l *UDPListener) readLoop() {
 	}
 }
 
-func (l *UDPListener) processData(data []byte, n int, sourceAddr *net.IPAddr, err error) (*message, bool) {
+func (l *Conn) processData(data []byte, n int, sourceAddr *net.IPAddr, err error) (*message, bool) {
 	if err != nil {
 		return &message{Err: err}, true
 	}
@@ -110,7 +110,7 @@ func (l *UDPListener) processData(data []byte, n int, sourceAddr *net.IPAddr, er
 	}, true
 }
 
-func (l *UDPListener) ReadFrom(b []byte) (int, *Address, error) {
+func (l *Conn) ReadFrom(b []byte) (int, *Address, error) {
 	var msg *message
 	select {
 	case chanMsg := <-l.packetChan:
@@ -126,7 +126,7 @@ func (l *UDPListener) ReadFrom(b []byte) (int, *Address, error) {
 	return copy(b, msg.Data), msg.Address, nil
 }
 
-func (l *UDPListener) WriteTo(b []byte, address *Address) (int, error) {
+func (l *Conn) WriteTo(b []byte, address *Address) (int, error) {
 	packet := addHeader(&headerParams{
 		Data: b,
 		Source: &Address{
@@ -139,7 +139,7 @@ func (l *UDPListener) WriteTo(b []byte, address *Address) (int, error) {
 	return l.ipListener.WriteToIP(packet, address.IP)
 }
 
-func ListenUDP(network string, address *Address) (*UDPListener, error) {
+func Listen(network string, address *Address) (*Conn, error) {
 	var ipNetwork string
 	switch network {
 	case "udp":
@@ -160,5 +160,5 @@ func ListenUDP(network string, address *Address) (*UDPListener, error) {
 		return nil, err
 	}
 
-	return newUDPListener(ipConn, address), nil
+	return newConn(ipConn, address), nil
 }
