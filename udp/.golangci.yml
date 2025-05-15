@@ -1,0 +1,9 @@
+linters:
+  enable:
+    - gofmt
+    - misspell
+    - bodyclose
+    - revive
+    - govet
+    - staticcheck
+
